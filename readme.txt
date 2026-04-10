@@ -4,7 +4,7 @@ Tags: woocommerce, wheels, fitment, ymm, vehicle
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 
 Filter WooCommerce wheel products by Year / Make / Model. Uses the Wheel-Size API in the admin and your own fitment database on the frontend for fast, accurate dropdowns.
@@ -23,7 +23,7 @@ Wheel YMM Filter gives a WooCommerce wheel store a cascading Year / Make / Model
 * Shortcode `[wheel_ymm_filter]` for placing the filter anywhere
 * Automatic filtering of the WooCommerce shop archive via `woocommerce_product_query`
 * "Clear filter" notice shown above the product grid when a filter is active
-* API key can be set via the `WYMM_API_KEY` PHP constant instead of the database (recommended for version-controlled configs)
+* API key can be loaded from outside WordPress — `WYMM_API_KEY` constant in `wp-config.php` or an `WYMM_API_KEY` environment variable — so the key is never stored in the database or editable in the admin UI
 * Built-in rate limiting: 60 Wheel-Size API calls per minute site-wide and 30 AJAX requests per IP per minute
 * Covering index on the fitment table keeps shop-page queries fast at scale
 * Automatic database schema upgrade on plugin load — no manual migration needed
@@ -44,15 +44,45 @@ Wheel YMM Filter gives a WooCommerce wheel store a cascading Year / Make / Model
 
 Example: `[wheel_ymm_filter redirect="/wheels/" layout="horizontal"]`
 
-== Advanced Configuration ==
+== Secure install (recommended) ==
 
-**Setting the API key via a PHP constant**
+For production sites we recommend loading the API key from outside WordPress so it is never stored in the database, never editable in the admin UI, and never rendered back to the browser. When any of the methods below are used, the settings-page input is disabled and shows **"Managed outside WordPress."**, and any stale copy of the key in `wp_options` is automatically deleted on the next admin page load.
 
-Add the following to `wp-config.php` (or a must-use plugin) to keep the key out of the database:
+Pick the most restrictive method your host supports.
+
+**Method A — Secrets file above the web root (best)**
+
+1. Create a file **above** `public_html` (not inside your WordPress install), e.g. `/home/USERNAME/wymm-secrets.php`:
+
+`<?php
+define( 'WYMM_API_KEY', 'your-user-key-here' );`
+
+2. Set the file permissions to `400` (owner read-only) so only the web user can read it.
+3. Edit `wp-config.php` and add the following line **above** the `/* That's all, stop editing! */` comment:
+
+`require_once '/home/USERNAME/wymm-secrets.php';`
+
+The secrets file sits outside the web root, so it cannot be fetched over HTTP even if a misconfiguration or backup exposes files under `public_html`. It is also not touched by plugin updates or reinstalls.
+
+**Method B — Constant in wp-config.php**
+
+Add the following to `wp-config.php` above the `/* That's all, stop editing! */` comment:
 
 `define( 'WYMM_API_KEY', 'your-user-key-here' );`
 
-When this constant is present the settings-page field is disabled and the stored option is ignored.
+The key is never written to the database and the settings field is locked, but `wp-config.php` itself lives inside the WordPress root.
+
+**Method C — Environment variable**
+
+Set `WYMM_API_KEY` as an environment variable via your host's control panel, a PHP-FPM pool config, or `.htaccess`:
+
+`SetEnv WYMM_API_KEY "your-user-key-here"`
+
+Only works if `getenv()` is populated on your host. Verify with **WooCommerce → Wheel YMM → Diagnostics → Test API** after applying.
+
+**For distributed users / customers**
+
+If none of the methods above are used, the plugin falls back to storing the key in the `wymm_api_key` WordPress option (not autoloaded) and lets you paste the key into the **WooCommerce → Wheel YMM** settings page. The field is write-only — the current key is never rendered back to the browser.
 
 == Frequently Asked Questions ==
 
@@ -69,6 +99,12 @@ Yes. The plugin hooks into WooCommerce product queries and the product editor.
 Settings page → **Cache TTL (seconds)**. The default is 604800 (7 days). The minimum is 60 seconds.
 
 == Changelog ==
+
+= 1.2.0 =
+* Hardened API-key storage: the key can now also be sourced from a `WYMM_API_KEY` environment variable, and the `wymm_api_key` option is automatically removed from the database when an external source is present.
+* Settings page now shows "Managed outside WordPress." whenever the key is sourced from a PHP constant or environment variable, without leaking which source is in use.
+* Removed the `wymm_api_key` filter to eliminate a potential exfiltration vector via hostile third-party code.
+* Added `.gitignore` to the plugin root to prevent accidental commits of local secrets files.
 
 = 1.1.0 =
 * Frontend dropdowns now sourced from the fitment database rather than the Wheel-Size API — only makes/models/years with published products are shown.

@@ -53,7 +53,7 @@ class WYMM_Admin {
 	}
 
 	public static function sanitize_api_key( $value ) {
-		if ( defined( 'WYMM_API_KEY' ) && WYMM_API_KEY ) {
+		if ( WYMM_API::has_external_key() ) {
 			$existing = get_option( WYMM_API::OPT_API_KEY, '' );
 			return is_string( $existing ) ? $existing : '';
 		}
@@ -79,7 +79,7 @@ class WYMM_Admin {
 		if ( ! current_user_can( self::settings_capability() ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'wheel-ymm-filter' ) );
 		}
-		$has_constant = defined( 'WYMM_API_KEY' ) && WYMM_API_KEY;
+		$has_external = WYMM_API::has_external_key();
 		$key_stored   = '' !== trim( (string) get_option( WYMM_API::OPT_API_KEY, '' ) );
 		$ttl          = get_option( WYMM_API::OPT_TTL, WYMM_API::CACHE_TTL );
 		?>
@@ -91,9 +91,9 @@ class WYMM_Admin {
 					<tr>
 						<th scope="row"><label for="wymm_api_key">Wheel-Size API key</label></th>
 						<td>
-							<?php if ( $has_constant ) : ?>
-								<input type="password" id="wymm_api_key" value="" class="regular-text" autocomplete="off" spellcheck="false" placeholder="<?php echo esc_attr__( 'Managed by the WYMM_API_KEY constant.', 'wheel-ymm-filter' ); ?>" disabled />
-								<p class="description">Your <code>user-key</code> is provided by the <code>WYMM_API_KEY</code> constant and is not editable here.</p>
+							<?php if ( $has_external ) : ?>
+								<input type="password" id="wymm_api_key" value="" class="regular-text" autocomplete="off" spellcheck="false" placeholder="<?php echo esc_attr__( 'Managed outside WordPress.', 'wheel-ymm-filter' ); ?>" disabled />
+								<p class="description"><?php esc_html_e( 'Your user-key is provided outside of WordPress and is not editable here.', 'wheel-ymm-filter' ); ?></p>
 							<?php else : ?>
 								<input type="password" id="wymm_api_key" name="<?php echo esc_attr( WYMM_API::OPT_API_KEY ); ?>" value="" class="regular-text" autocomplete="off" spellcheck="false" placeholder="<?php echo esc_attr( $key_stored ? __( 'Stored securely. Leave blank to keep the current key.', 'wheel-ymm-filter' ) : __( 'Paste a new API key.', 'wheel-ymm-filter' ) ); ?>" />
 								<p class="description">Your <code>user-key</code> from <a href="https://api.wheel-size.com/" target="_blank" rel="noopener noreferrer">wheel-size.com</a>. The current key is never rendered back into this page.</p>

@@ -14,8 +14,19 @@ class WYMM_API {
 		if ( defined( 'WYMM_API_KEY' ) && WYMM_API_KEY ) {
 			return trim( (string) WYMM_API_KEY );
 		}
-		$option = trim( (string) get_option( self::OPT_API_KEY, '' ) );
-		return (string) apply_filters( 'wymm_api_key', $option );
+		$env = getenv( 'WYMM_API_KEY' );
+		if ( is_string( $env ) && '' !== trim( $env ) ) {
+			return trim( $env );
+		}
+		return trim( (string) get_option( self::OPT_API_KEY, '' ) );
+	}
+
+	public static function has_external_key() {
+		if ( defined( 'WYMM_API_KEY' ) && WYMM_API_KEY ) {
+			return true;
+		}
+		$env = getenv( 'WYMM_API_KEY' );
+		return is_string( $env ) && '' !== trim( $env );
 	}
 
 	public static function ttl() {

@@ -1,39 +1,59 @@
 (function ($) {
 	'use strict';
 
+	var cfg = window.WYMM || {};
+	var actions = cfg.actions || {};
+	var i18n = cfg.i18n || {};
+	var MAX_RANGE = 50;
+
 	var makesCache = null;
 
 	function ajax(action, data) {
 		data = data || {};
 		data.action = action;
-		data._wpnonce = WYMM.nonce;
-		return $.post(WYMM.ajaxUrl, data);
+		data._wpnonce = cfg.nonce;
+		return $.post(cfg.ajaxUrl, data);
+	}
+
+	function showEditorError($editor, message) {
+		var $err = $editor.find('.wymm-error');
+		if (!$err.length) {
+			$err = $('<div class="wymm-error" role="alert" style="color:#b32d2e;margin:6px 0;"></div>');
+			$editor.prepend($err);
+		}
+		$err.text(message);
+		clearTimeout($err.data('timer'));
+		$err.data('timer', setTimeout(function () { $err.text(''); }, 5000));
+	}
+
+	function placeholderOption(text) {
+		return $('<option>').attr('value', '').text(text);
 	}
 
 	function loadMakes($sel) {
 		function fill(list) {
-			$sel.empty().append('<option value="">Make</option>');
+			$sel.empty().append(placeholderOption('Make'));
 			list.forEach(function (m) {
 				$sel.append($('<option>').val(m.slug).text(m.name));
 			});
 		}
 		if (makesCache) { fill(makesCache); return; }
-		ajax('wymm_get_makes').done(function (r) {
-			if (r.success) { makesCache = r.data; fill(r.data); }
-			else { $sel.empty().append('<option value="">(error loading makes)</option>'); }
+		ajax(actions.getMakes || 'wymm_admin_get_makes').done(function (r) {
+			if (r && r.success) { makesCache = r.data; fill(r.data); }
+			else { $sel.empty().append(placeholderOption(i18n.errorLoading || '(error loading makes)')); }
 		}).fail(function () {
-			$sel.empty().append('<option value="">(error)</option>');
+			$sel.empty().append(placeholderOption(i18n.error || '(error)'));
 		});
 	}
 
 	function loadModels($editor, makeSlug) {
 		var $m = $editor.find('.wymm-model');
-		$m.prop('disabled', true).empty().append('<option value="">Loading…</option>');
-		$editor.find('.wymm-year').prop('disabled', true).empty().append('<option value="">Year</option>');
-		if (!makeSlug) { $m.empty().append('<option value="">Model</option>'); return; }
-		ajax('wymm_get_models', { make: makeSlug }).done(function (r) {
-			$m.empty().append('<option value="">Model</option>');
-			if (r.success) {
+		$m.prop('disabled', true).empty().append(placeholderOption(i18n.loading || 'Loading\u2026'));
+		$editor.find('.wymm-year').prop('disabled', true).empty().append(placeholderOption(i18n.year || 'Year'));
+		if (!makeSlug) { $m.empty().append(placeholderOption(i18n.model || 'Model')); return; }
+		ajax(actions.getModels || 'wymm_admin_get_models', { make: makeSlug }).done(function (r) {
+			$m.empty().append(placeholderOption(i18n.model || 'Model'));
+			if (r && r.success) {
 				r.data.forEach(function (x) { $m.append($('<option>').val(x.slug).text(x.name)); });
 				$m.prop('disabled', false);
 			}
@@ -42,11 +62,11 @@
 
 	function loadYears($editor, makeSlug, modelSlug) {
 		var $y = $editor.find('.wymm-year');
-		$y.prop('disabled', true).empty().append('<option value="">Loading…</option>');
-		if (!makeSlug || !modelSlug) { $y.empty().append('<option value="">Year</option>'); return; }
-		ajax('wymm_get_years', { make: makeSlug, model: modelSlug }).done(function (r) {
-			$y.empty().append('<option value="">Year</option>');
-			if (r.success) {
+		$y.prop('disabled', true).empty().append(placeholderOption(i18n.loading || 'Loading\u2026'));
+		if (!makeSlug || !modelSlug) { $y.empty().append(placeholderOption(i18n.year || 'Year')); return; }
+		ajax(actions.getYears || 'wymm_admin_get_years', { make: makeSlug, model: modelSlug }).done(function (r) {
+			$y.empty().append(placeholderOption(i18n.year || 'Year'));
+			if (r && r.success) {
 				r.data.forEach(function (yr) { $y.append($('<option>').val(yr).text(yr)); });
 				$y.prop('disabled', false);
 			}
@@ -54,21 +74,37 @@
 	}
 
 	function addRow($editor, makeSlug, makeName, modelSlug, modelName, year) {
-		var field = $editor.data('field');
+		var field = String($editor.data('field') || '');
 		var $tbody = $editor.find('.wymm-list tbody');
+		var yearStr = String(year);
 		var dupe = $tbody.find('tr').filter(function () {
 			var $t = $(this);
-			return $t.data('make') == makeSlug && $t.data('model') == modelSlug && String($t.data('year')) === String(year);
+			return String($t.data('make')) === String(makeSlug) &&
+				String($t.data('model')) === String(modelSlug) &&
+				String($t.data('year')) === yearStr;
 		});
 		if (dupe.length) return;
-		var $tr = $('<tr>')
-			.attr('data-make', makeSlug)
-			.attr('data-model', modelSlug)
-			.attr('data-year', year);
-		$tr.append($('<td>').text(makeName).append('<input type="hidden" name="' + field + '[make_slug][]" value="' + makeSlug + '">'));
-		$tr.append($('<td>').text(modelName).append('<input type="hidden" name="' + field + '[model_slug][]" value="' + modelSlug + '">'));
-		$tr.append($('<td>').text(year).append('<input type="hidden" name="' + field + '[year][]" value="' + year + '">'));
-		$tr.append($('<td>').append('<button type="button" class="button wymm-remove">Remove</button>'));
+
+		var $tr = $('<tr>', {
+			'data-make': makeSlug,
+			'data-model': modelSlug,
+			'data-year': yearStr
+		});
+
+		var $tdMake = $('<td>').text(makeName).append(
+			$('<input>', { type: 'hidden', name: field + '[make_slug][]', value: makeSlug })
+		);
+		var $tdModel = $('<td>').text(modelName).append(
+			$('<input>', { type: 'hidden', name: field + '[model_slug][]', value: modelSlug })
+		);
+		var $tdYear = $('<td>').text(yearStr).append(
+			$('<input>', { type: 'hidden', name: field + '[year][]', value: yearStr })
+		);
+		var $tdRemove = $('<td>').append(
+			$('<button>', { type: 'button', 'class': 'button wymm-remove' }).text('Remove')
+		);
+
+		$tr.append($tdMake).append($tdModel).append($tdYear).append($tdRemove);
 		$tbody.append($tr);
 	}
 
@@ -94,7 +130,10 @@
 		var $mk = $editor.find('.wymm-make');
 		var $md = $editor.find('.wymm-model');
 		var $yr = $editor.find('.wymm-year');
-		if (!$mk.val() || !$md.val() || !$yr.val()) { alert('Select make, model, and year.'); return; }
+		if (!$mk.val() || !$md.val() || !$yr.val()) {
+			showEditorError($editor, i18n.selectAll || 'Select make, model, and year.');
+			return;
+		}
 		addRow($editor, $mk.val(), $mk.find('option:selected').text(), $md.val(), $md.find('option:selected').text(), $yr.val());
 	});
 
@@ -104,8 +143,18 @@
 		var $md = $editor.find('.wymm-model');
 		var from = parseInt($editor.find('.wymm-year-from').val(), 10);
 		var to = parseInt($editor.find('.wymm-year-to').val(), 10);
-		if (!$mk.val() || !$md.val()) { alert('Select make and model first.'); return; }
-		if (!from || !to || from > to) { alert('Enter a valid year range.'); return; }
+		if (!$mk.val() || !$md.val()) {
+			showEditorError($editor, i18n.selectMakeModel || 'Select make and model first.');
+			return;
+		}
+		if (!from || !to || from > to) {
+			showEditorError($editor, i18n.invalidRange || 'Enter a valid year range.');
+			return;
+		}
+		if ((to - from) > MAX_RANGE) {
+			showEditorError($editor, i18n.rangeTooLarge || 'Maximum year range is 50 years.');
+			return;
+		}
 		for (var y = from; y <= to; y++) {
 			addRow($editor, $mk.val(), $mk.find('option:selected').text(), $md.val(), $md.find('option:selected').text(), y);
 		}

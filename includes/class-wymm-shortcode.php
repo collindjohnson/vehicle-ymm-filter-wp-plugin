@@ -20,7 +20,16 @@ class WYMM_Shortcode {
 		);
 		wp_localize_script( 'wymm-frontend', 'WYMM', array(
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => WYMM_Ajax::nonce(),
+			'nonce'   => WYMM_Ajax::public_nonce(),
+			'version' => WYMM_VERSION,
+			'i18n'    => array(
+				'make'      => __( 'Make', 'wheel-ymm-filter' ),
+				'model'     => __( 'Model', 'wheel-ymm-filter' ),
+				'year'      => __( 'Year', 'wheel-ymm-filter' ),
+				'loading'   => __( 'Loading…', 'wheel-ymm-filter' ),
+				'error'     => __( '(error)', 'wheel-ymm-filter' ),
+				'selectAll' => __( 'Please select year, make, and model.', 'wheel-ymm-filter' ),
+			),
 		) );
 		wp_register_style( 'wymm-frontend', WYMM_URL . 'assets/css/frontend-filter.css', array(), WYMM_VERSION );
 	}
@@ -34,12 +43,11 @@ class WYMM_Shortcode {
 			'layout'   => 'horizontal',
 		), $atts, 'wheel_ymm_filter' );
 
-		$redirect = esc_url( $atts['redirect'] );
-		$layout   = in_array( $atts['layout'], array( 'horizontal', 'stacked' ), true ) ? $atts['layout'] : 'horizontal';
+		$layout = in_array( $atts['layout'], array( 'horizontal', 'stacked' ), true ) ? $atts['layout'] : 'horizontal';
 
 		ob_start();
 		?>
-		<form class="wymm-filter wymm-layout-<?php echo esc_attr( $layout ); ?>" method="get" action="<?php echo $redirect; ?>">
+		<form class="wymm-filter wymm-layout-<?php echo esc_attr( $layout ); ?>" method="get" action="<?php echo esc_url( $atts['redirect'] ); ?>">
 			<div class="wymm-field">
 				<label>Year</label>
 				<select name="wymm_year" class="wymm-f-year" disabled><option value="">Year</option></select>

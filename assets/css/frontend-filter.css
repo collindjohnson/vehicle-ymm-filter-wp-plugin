@@ -1,0 +1,65 @@
+.wymm-filter {
+	display: flex;
+	gap: 12px;
+	align-items: flex-end;
+	flex-wrap: wrap;
+	padding: 16px;
+	background: #f7f7f7;
+	border: 1px solid #e5e5e5;
+	border-radius: 6px;
+	margin: 16px 0;
+}
+.wymm-filter.wymm-layout-stacked {
+	flex-direction: column;
+	align-items: stretch;
+}
+.wymm-filter .wymm-field {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 160px;
+	min-width: 140px;
+}
+.wymm-filter .wymm-field label {
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	margin-bottom: 4px;
+	color: #555;
+}
+.wymm-filter select {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	background: #fff;
+	font-size: 14px;
+}
+.wymm-filter .wymm-submit {
+	flex: 0 0 auto;
+}
+.wymm-filter .wymm-find {
+	padding: 10px 20px;
+	background: #111;
+	color: #fff;
+	border: none;
+	border-radius: 4px;
+	font-weight: 600;
+	cursor: pointer;
+}
+.wymm-filter .wymm-find:hover { background: #333; }
+
+.wymm-active-filter {
+	padding: 10px 14px;
+	background: #eef6ff;
+	border: 1px solid #b6dcff;
+	border-radius: 4px;
+	margin-bottom: 16px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+.wymm-active-filter a {
+	color: #0066cc;
+	text-decoration: underline;
+}
